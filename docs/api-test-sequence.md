@@ -4,6 +4,10 @@ How a request flows from the client through the Express server to the
 Ethereum blockchain and back. The endpoint reads public state from the
 **USDC** ERC-20 contract on mainnet via ethers.js and prints it to the console.
 
+![GET /api/ApiTest sequence diagram](./rwa-seq-diagrame-api-test.png)
+
+The diagram below is the Mermaid source that renders the image above.
+
 ```mermaid
 sequenceDiagram
     autonumber
