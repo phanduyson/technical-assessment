@@ -1,5 +1,73 @@
 # Engineering Assessment
 
+> **Solution** — the implemented endpoint and how to run it are documented below.
+> The original task description follows after.
+
+## ✅ Solution: `GET /api/ApiTest`
+
+A new endpoint that reads public state from a **pre-deployed, public smart contract**
+— **USDC** (ERC-20) on Ethereum mainnet (`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`)
+— using [ethers.js](https://docs.ethers.org/), prints the result to the console, and
+returns it as JSON.
+
+### Run it
+
+```bash
+npm install
+npm start          # waits for: "Backend running on http://localhost:3001"
+```
+
+In a second terminal:
+
+```bash
+curl http://localhost:3001/api/ApiTest
+```
+
+### Example response
+
+```json
+{
+  "success": true,
+  "data": {
+    "contract": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "network": "ethereum-mainnet",
+    "name": "USD Coin",
+    "symbol": "USDC",
+    "decimals": 6,
+    "totalSupply": "51835210126.479676",
+    "sampleHolder": "0xF977814e90dA44bFA03b6295A0616a897441aceC",
+    "sampleHolderBalance": "142.2445"
+  }
+}
+```
+
+The same data is printed to the **server console** (the requirement), e.g.:
+
+```
+✅ On-chain data fetched successfully:
+{ name: 'USD Coin', symbol: 'USDC', totalSupply: '51835210126.479676', ... }
+GET /api/ApiTest 200
+```
+
+### What it reads
+
+Via the contract's read-only (`view`) functions: `name`, `symbol`, `decimals`,
+`totalSupply`, and `balanceOf` for a sample holder — i.e. contract state, public
+variables, and a balance.
+
+### Implementation notes
+
+- **Endpoint:** `src/index.js` — `GET /api/ApiTest` (calls the helper, logs to
+  console, returns JSON, responds `502` on failure).
+- **On-chain logic:** `src/config/getContractData.js` — minimal ABI, parallel reads
+  via `Promise.all`, human-readable formatting with `formatUnits`.
+- **Provider:** a keyless public RPC by default (zero setup); override with the
+  `RPC_URL` env var (Infura / Alchemy / QuickNode).
+- **Robustness:** `staticNetwork` + a 12s timeout so the request always settles
+  rather than hanging if the RPC is slow or unreachable.
+
+---
+
 ## 📝 Objective
 
 The goal of this assessment is to evaluate your ability to:

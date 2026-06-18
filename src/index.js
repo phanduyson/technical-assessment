@@ -3,6 +3,7 @@ const morgan = require('morgan');
 const cors = require('cors');
 const path = require('path');
 const killPort = require('kill-port');
+const { getContractData } = require('./config/getContractData');
 
 require('dotenv').config();
 
@@ -20,6 +21,12 @@ const checkPort = async (port, maxPort = 65535) => {
         await killPort(port, "udp");
         return port;
     } catch (err) {
+        // kill-port rejects with "No process running on port" when the port is
+        // already free — which is exactly what we want, so use it. Only advance
+        // to the next port on a genuine error (e.g. permission denied).
+        if (/no process running/i.test(err.message)) {
+            return port;
+        }
         return checkPort(port + 1, maxPort);
     }
 };
@@ -43,25 +50,39 @@ const checkPort = async (port, maxPort = 65535) => {
     require('./config/dbHandler.js').connect();
 
     /**
-     * @route    [HTTP_METHOD] /api/endpoint
-     * @desc     [Short summary of what this endpoint does, e.g., Reads or sets value in smart contract]
-     * @author   [Your Name]
-     * @access   [public/private/auth-required]
-     * @param    {Request}  req  - Express request object. [Describe relevant body/query/params fields]
+     * @route    GET /api/ApiTest
+     * @desc     Fetches public state from a pre-deployed smart contract (USDC
+     *           ERC-20 on Ethereum mainnet) via ethers.js and logs it to the console.
+     * @access   public
+     * @param    {Request}  req  - Express request object. No params required.
      * @param    {Response} res  - Express response object.
-     * @returns  {JSON}          [Describe the JSON structure returned]
-     * @throws   [Error conditions, e.g., 400 on invalid input, 500 on contract failure]
+     * @returns  {JSON}          { success: true, data: { name, symbol, decimals, totalSupply, ... } }
+     * @throws   502 if the on-chain read fails (e.g., RPC unreachable).
      *
      * @example
      * // Example request
-     * curl -X POST http://localhost:3001/contract/value -H "Content-Type: application/json" -d '{"value": 42}'
+     * curl http://localhost:3001/api/ApiTest
      *
      * // Example response
      * {
-     *   "message": "Value updated",
-     *   "txHash": "0x..."
+     *   "success": true,
+     *   "data": { "name": "USD Coin", "symbol": "USDC", "totalSupply": "..." }
      * }
      */
+    app.get('/api/ApiTest', async (req, res) => {
+        try {
+            const data = await getContractData();
+
+            // Requirement: print the fetched on-chain data to the console.
+            console.log('\n✅ On-chain data fetched successfully:');
+            console.log(data);
+
+            res.json({ success: true, data });
+        } catch (err) {
+            console.error('❌ Failed to fetch on-chain data:', err.message);
+            res.status(502).json({ success: false, error: 'Failed to fetch on-chain data' });
+        }
+    });
 
     // Serve static files in production
     if (process.env.NODE_ENV === 'production') {
